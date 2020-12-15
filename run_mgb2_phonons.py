@@ -15,14 +15,15 @@ import abipy.abilab as abilab
 from abipy import flowtk
 
 
-def make_scf_input(structure, ngkpt, tsmear, pseudos, paral_kgb=0):
+def make_scf_nscf_inputs(structure, ngkpt, tsmear, pseudos, paral_kgb=0):
     """Build and return Ground-state input for MgB2 given ngkpt and tsmear."""
 
-    scf_inp = abilab.AbinitInput(structure, pseudos=pseudos)
+    multi = abilab.MultiDataset(structure=structure, pseudos=pseudos, ndtset=2)
+    #scf_inp = abilab.AbinitInput(structure, pseudos=pseudos)
 
     # Global variables
-    scf_inp.set_vars(
-        ecut=35,
+    multi.set_vars(
+        ecut=38,
         nband=8,
         occopt=4,    # Marzari smearing
         tsmear=tsmear,
@@ -31,10 +32,16 @@ def make_scf_input(structure, ngkpt, tsmear, pseudos, paral_kgb=0):
    )
 
     # Dataset 1 (GS run)
-    scf_inp.set_kmesh(ngkpt=ngkpt, shiftk=[0, 0, 0])
-    scf_inp.set_vars(tolvrs=1e-8)
+    multi[0].set_kmesh(ngkpt=ngkpt, shiftk=[0, 0, 0])
+    multi[0].set_vars(tolvrs=1e-8)
 
-    return scf_inp
+    # Dataset 2 (NSCF run)
+    multi[1].set_kpath(ndivsm=15)
+    multi[1].set_vars(tolwfr=1e-18)
+
+    # Generate two input files for the GS and the NSCF run
+    scf_input, nscf_input = multi.split_datasets()
+    return scf_input, nscf_input
 
 
 def build_flow(options):
@@ -45,24 +52,25 @@ def build_flow(options):
     structure = abidata.structure_from_ucell("MgB2")
 
     # Get pseudos from a table.
-    table = abilab.PseudoTable(["Mg-low.psp8", "B.psp8"])
-    pseudos = table.get_pseudos_for_structure(structure)
+    pseudos = abilab.PseudoTable(["Mg-low.psp8", "B.psp8"])
 
     flow = flowtk.Flow(workdir=options.workdir)
 
     # Build work of GS task. Each gs_task uses different (ngkpt, tsmear) values
     # and represent the starting point of the phonon works.
-    scf_work = flowtk.Work()
     ngkpt = [12, 12, 12]
     tsmear = 0.02
-    scf_input = make_scf_input(structure, ngkpt, tsmear, pseudos)
-    scf_task = scf_work.register_scf_task(scf_input)
-    flow.register_work(scf_work)
+    scf_input, nscf_input = make_scf_nscf_inputs(structure, ngkpt, tsmear, pseudos)
+
+    gs_work = flowtk.Work()
+    scf_task = gs_work.register_scf_task(scf_input)
+    nscf_task = gs_work.register_nscf_task(nscf_input, deps={scf_task: "DEN"})
+    flow.register_work(gs_work)
 
     # This call uses the information reported in the GS task to
-    # compute all the independent atomic perturbations corresponding to a [4, 4, 4] q-mesh.
-    ph_work = flowtk.PhononWork.from_scf_task(scf_task, qpoints=[4, 4, 4], is_ngqpt=True)
-    flow.register_work(ph_work)
+    # compute all the independent atomic perturbations corresponding to a [6, 6, 6] q-mesh.
+    #ph_work = flowtk.PhononWork.from_scf_task(scf_task, qpoints=[6, 6, 6], is_ngqpt=True)
+    #flow.register_work(ph_work)
 
     return flow.allocate(use_smartio=True)
 
