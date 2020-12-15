@@ -1,11 +1,6 @@
 #!/usr/bin/env python
 r"""
-Flow to analyze the convergence of phonons in metals wrt ngkpt and tsmear
-=========================================================================
-
-This examples shows how to build a Flow to compute the
-phonon band structure in a metallic system (MgB2) with different
-k-point samplings and values of the electronic smearing tsmear
+AbiPy script to compute the GS, electronic bands and phonon band structure of MgB2.
 """
 
 import os
@@ -16,10 +11,9 @@ from abipy import flowtk
 
 
 def make_scf_nscf_inputs(structure, ngkpt, tsmear, pseudos, paral_kgb=0):
-    """Build and return Ground-state input for MgB2 given ngkpt and tsmear."""
+    """Build and return Ground-state SCF and NSCF inputs for MgB2 given ngkpt and tsmear."""
 
     multi = abilab.MultiDataset(structure=structure, pseudos=pseudos, ndtset=2)
-    #scf_inp = abilab.AbinitInput(structure, pseudos=pseudos)
 
     # Global variables
     multi.set_vars(
@@ -49,9 +43,10 @@ def build_flow(options):
     if not options.workdir:
         options.workdir = os.path.basename(sys.argv[0]).replace(".py", "").replace("run_", "flow_")
 
+    # Init structure from internal database.
     structure = abidata.structure_from_ucell("MgB2")
 
-    # Get pseudos from a table.
+    # Our pseudopotentials.
     pseudos = abilab.PseudoTable(["Mg-low.psp8", "B.psp8"])
 
     flow = flowtk.Flow(workdir=options.workdir)
@@ -69,8 +64,8 @@ def build_flow(options):
 
     # This call uses the information reported in the GS task to
     # compute all the independent atomic perturbations corresponding to a [6, 6, 6] q-mesh.
-    #ph_work = flowtk.PhononWork.from_scf_task(scf_task, qpoints=[6, 6, 6], is_ngqpt=True)
-    #flow.register_work(ph_work)
+    ph_work = flowtk.PhononWork.from_scf_task(scf_task, qpoints=[6, 6, 6], is_ngqpt=True)
+    flow.register_work(ph_work)
 
     return flow.allocate(use_smartio=True)
 
