@@ -1,0 +1,30 @@
+qadapters:
+    -
+      priority: 1
+      queue:
+        qname: batch
+        qtype: slurm
+      job:
+        mpi_runner: mpirun
+        modules:
+         - releases/2018b
+         - intel/2018b
+         - iimpi/2018b
+         - libxc/4.2.3-intel-2018b
+         - netCDF-Fortran/4.4.4-intel-2018b
+        pre_run:
+         - export OMP_NUM_THREADS=1
+         - export PATH=$HOME/git_repos/abinit_rmms/_build_intel/src/98_main:$PATH
+         - ulimit -s unlimited
+      limits:
+         min_cores: 1
+         max_cores: 12
+         timelimit: 1:0:0
+         min_mem_per_proc: 1000
+         max_mem_per_proc: 2000
+         max_num_launches: 50
+      hardware:
+         num_nodes: 80
+         sockets_per_node: 2
+         cores_per_socket: 12
+         mem_per_node: 95 Gb

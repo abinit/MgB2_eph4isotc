@@ -64,7 +64,7 @@ def build_flow(options):
 
     # This call uses the information reported in the GS task to
     # compute all the independent atomic perturbations corresponding to a [6, 6, 6] q-mesh.
-    ph_work = flowtk.PhononWork.from_scf_task(scf_task, qpoints=[6, 6, 6], is_ngqpt=True)
+    ph_work = flowtk.PhononWork.from_scf_task(scf_task, qpoints=[4, 4, 4], is_ngqpt=True)
     flow.register_work(ph_work)
 
     return flow.allocate(use_smartio=True)
